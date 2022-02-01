@@ -1,0 +1,19 @@
+#%RAML 1.0 Library
+usage: collections of API frag files
+
+types: 
+
+  userType:     !include types/user.raml
+  productType: !include types/product.raml
+  categoryType: !include types/category.raml
+  orderType:    !include types/order.raml
+
+
+traits:
+  errorMessage: !include traits/errorMsgs.raml
+
+securitySchemes:
+  security: !include securityScheme.raml
+
+resourceTypes:
+  postRes: !include postResource.raml

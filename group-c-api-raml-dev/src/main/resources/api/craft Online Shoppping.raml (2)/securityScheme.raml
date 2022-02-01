@@ -1,0 +1,17 @@
+#%RAML 1.0 SecurityScheme
+type : Basic Authentication
+description: this rest api uses basic authentication
+describedBy: 
+  headers:
+    password:
+      description: user have to send valid pwd
+      type: string
+    username:
+      description: user have to send valid username
+      type: string
+  responses:
+    401:
+      description: unauthorized user
+    403:
+      description: forbidden
+ 
