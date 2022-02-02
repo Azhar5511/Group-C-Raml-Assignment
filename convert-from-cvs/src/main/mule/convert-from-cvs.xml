@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:batch="http://www.mulesoft.org/schema/mule/batch"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="b67b37ba-4a3b-42bd-91f3-65b02f94c00f" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<file:config name="File_Config" doc:name="File Config" doc:id="3a7ef207-e0d1-447e-89c5-abdf04702273" />
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="14d6ec26-a2a7-4233-bab4-e1a8735eed02" >
+		<db:my-sql-connection host="localhost" port="3306" user="root" password="root" />
+	</db:config>
+	<flow name="convert-from-cvsFlow" doc:id="ed4070d5-0a81-493a-b06b-44bd4ec15aab" >
+		<http:listener doc:name="Listener" doc:id="120b70c3-8b92-4f20-a57e-c0012c7ed097" config-ref="HTTP_Listener_config" path="convert"/>
+		<file:read doc:name="Read" doc:id="776b1c83-9d5e-4d93-bdff-12caf7a214af" config-ref="File_Config" path="C:\RebexTinySftpServer-Binaries-Latest\data\userdata.csv"/>
+		<ee:transform doc:name="Transform Message" doc:id="4698367c-3e0d-4e2e-b819-784ccd60c95c" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<batch:job jobName="convert-from-cvsBatch_Job" doc:id="c3706f0e-cf94-4bd5-aab6-122cb4dc8098" maxFailedRecords="-1">
+			<batch:process-records >
+				<batch:step name="Batch_Step1" doc:id="f6a1c208-83e7-467e-8072-10d11c79b5f2" acceptPolicy="ALL">
+					<db:insert doc:name="Insert" doc:id="dfb7df3a-8e7b-4d8b-b423-fef91d2cdba9" config-ref="Database_Config">
+						<db:sql ><![CDATA[
+insert into userdata.userinfo(first_name,last_name,email,title,phone)
+values(:first_name,:last_name,:email,:title,:phone);]]></db:sql>
+						<db:input-parameters ><![CDATA[#[{   
+	first_name: payload.first_name, 
+	last_name: payload.last_name, 
+	email: payload.email, 
+	title: payload.title, 
+	phone: payload.phone
+}]]]></db:input-parameters>
+					</db:insert>
+					<batch:aggregator doc:name="Batch Aggregator" doc:id="273c0bc4-2868-4db1-814a-dab80234aa47" size="25">
+						<db:bulk-insert doc:name="Bulk insert" doc:id="f76091c3-ebd3-425d-8c1b-7695bb8739c3" config-ref="Database_Config">
+							<db:bulk-input-parameters ><![CDATA[#[payload map 
+{   
+	first_name: $.first_name, 
+	last_name: $.last_name, 
+	email:$.email, 
+	title:$.title, 
+	phone: $.phone
+}]]]></db:bulk-input-parameters>
+							<db:sql ><![CDATA[insert into userdata.userinfo(first_name,last_name,email,title,phone)
+values(:first_name,:last_name,:email,:title,:phone);]]></db:sql>
+						</db:bulk-insert>
+					</batch:aggregator>
+				</batch:step>
+			</batch:process-records>
+			<batch:on-complete >
+				<logger level="INFO" doc:name="Logger" doc:id="3e5f83e7-f7a7-46af-991a-1020ad05f36b" message="completted"/>
+			</batch:on-complete>
+		</batch:job>
+		<set-payload value="DONE!!!" doc:name="Set Payload" doc:id="2da90da2-3791-4b45-bb34-dcc35c7513ea" />
+	</flow>
+</mule>
